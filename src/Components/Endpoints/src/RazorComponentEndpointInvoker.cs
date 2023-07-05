@@ -7,7 +7,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Antiforgery.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +43,7 @@ internal class RazorComponentEndpointInvoker
         // the developer.
         var antiforgeryMetadata = _context.GetEndpoint()!.Metadata.GetMetadata<IAntiforgeryMetadata>();
         var antiforgery = _context.RequestServices.GetRequiredService<IAntiforgery>();
-        var (valid, isPost, handler) = await ValidateRequestAsync(antiforgeryMetadata?.Required == true ? antiforgery : null);
+        var (valid, isPost, handler) = await ValidateRequestAsync(antiforgeryMetadata?.RequiresValidation == true ? antiforgery : null);
         if (!valid)
         {
             // If the request is not valid we've already set the response to a 400 or similar
@@ -111,7 +110,11 @@ internal class RazorComponentEndpointInvoker
         var isPost = HttpMethods.IsPost(_context.Request.Method);
         if (isPost)
         {
-            var valid = antiforgery == null || await antiforgery.IsRequestValidAsync(_context);
+            // Respect the token validation done by the middleware _if_ it has been set, otherwise
+            // run the validation here.
+            var valid = _context.Features.Get<IAntiforgeryValidationFeature>() is {} antiForgeryValidationFeature
+                ? antiForgeryValidationFeature.IsValid == true
+                : antiforgery == null || await antiforgery.IsRequestValidAsync(_context);
             if (!valid)
             {
                 _context.Response.StatusCode = StatusCodes.Status400BadRequest;

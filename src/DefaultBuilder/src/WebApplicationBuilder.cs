@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.Reflection;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -22,6 +23,7 @@ public sealed class WebApplicationBuilder : IHostApplicationBuilder
     private const string EndpointRouteBuilderKey = "__EndpointRouteBuilder";
     private const string AuthenticationMiddlewareSetKey = "__AuthenticationMiddlewareSet";
     private const string AuthorizationMiddlewareSetKey = "__AuthorizationMiddlewareSet";
+    private const string AntiforgeryMiddlewareSetKey = "__AntiforgeryMiddlewareSet";
     private const string UseRoutingKey = "__UseRouting";
 
     private readonly HostApplicationBuilder _hostApplicationBuilder;
@@ -383,6 +385,15 @@ public sealed class WebApplicationBuilder : IHostApplicationBuilder
             {
                 _builtApplication.Properties[AuthorizationMiddlewareSetKey] = true;
                 app.UseAuthorization();
+            }
+        }
+
+        if (serviceProviderIsService?.IsService(typeof(IAntiforgery)) is true)
+        {
+            if (!_builtApplication.Properties.ContainsKey(AntiforgeryMiddlewareSetKey))
+            {
+                _builtApplication.Properties[AntiforgeryMiddlewareSetKey] = true;
+                app.UseAntiforgery();
             }
         }
 
