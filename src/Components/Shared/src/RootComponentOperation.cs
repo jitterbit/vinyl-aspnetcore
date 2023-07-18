@@ -11,7 +11,7 @@ internal sealed class RootComponentOperation<TMarker>
     // When adding a root component, this is the selector ID
     // to round-trip back to the client so it knows which DOM
     // element the component should be attached to.
-    public int? SelectorId { get; set; }
+    public string? SelectorId { get; set; }
 
     // The ID of the component to use during an update or remove
     // operation.

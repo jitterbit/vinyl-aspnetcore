@@ -3,7 +3,7 @@
 
 import { internalFunctions as navigationManagerFunctions } from '../../Services/NavigationManager';
 import { toLogicalRootCommentElement, LogicalElement, toLogicalElement } from '../../Rendering/LogicalElements';
-import { ServerComponentDescriptor } from '../../Services/ComponentDescriptorDiscovery';
+import { ServerComponentDescriptor, descriptorToMarker } from '../../Services/ComponentDescriptorDiscovery';
 import { HubConnectionState } from '@microsoft/signalr';
 import { getAndRemovePendingRootComponentContainer } from '../../Rendering/JSRootComponents';
 import { RootComponentManager } from '../../Services/RootComponentManager';
@@ -11,14 +11,22 @@ import { RootComponentManager } from '../../Services/RootComponentManager';
 export class CircuitDescriptor {
   public circuitId?: string;
 
-  public components: ServerComponentDescriptor[] | RootComponentManager;
+  public components: ServerComponentDescriptor[];
+
+  public rootComponentManager?: RootComponentManager;
 
   public applicationState: string;
 
   public constructor(components: ServerComponentDescriptor[] | RootComponentManager, appState: string) {
     this.circuitId = undefined;
     this.applicationState = appState;
-    this.components = components;
+
+    if (components instanceof RootComponentManager) {
+      this.rootComponentManager = components;
+      this.components = [];
+    } else {
+      this.components = components;
+    }
   }
 
   public reconnect(reconnection: signalR.HubConnection): Promise<boolean> {
@@ -45,10 +53,7 @@ export class CircuitDescriptor {
       return false;
     }
 
-    const componentsJson = this.components instanceof RootComponentManager
-      ? '[]'
-      : JSON.stringify(this.components.map(c => c.toRecord()));
-
+    const componentsJson = JSON.stringify(this.components.map(c => descriptorToMarker(c)));
     const result = await connection.invoke<string>(
       'StartCircuit',
       navigationManagerFunctions.getBaseURI(),
@@ -74,13 +79,14 @@ export class CircuitDescriptor {
 
     // ... or it may be a root component added by .NET
     const parsedSequence = Number.parseInt(sequenceOrIdentifier);
-    if (!Number.isNaN(parsedSequence)) {
-      const descriptor = this.components instanceof RootComponentManager
-        ? this.components.resolveRootComponent(parsedSequence, componentId)
-        : this.components[parsedSequence];
-      return toLogicalRootCommentElement(descriptor);
+    const descriptor = Number.isNaN(parsedSequence)
+      ? this.rootComponentManager?.tryResolveRootComponent(sequenceOrIdentifier, componentId)
+      : this.components[parsedSequence];
+
+    if (descriptor === undefined) {
+      throw new Error(`Invalid sequence number or identifier '${sequenceOrIdentifier}'.`);
     }
 
-    throw new Error(`Invalid sequence number or identifier '${sequenceOrIdentifier}'.`);
+    return toLogicalRootCommentElement(descriptor);
   }
 }

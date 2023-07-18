@@ -28,12 +28,15 @@ export class WebAssemblyComponentAttacher {
 
   public resolveRegisteredElement(id: string, componentId: number): LogicalElement | undefined {
     const parsedId = Number.parseInt(id);
-    if (!Number.isNaN(parsedId)) {
-      const component = this.rootComponentManager?.resolveRootComponent(parsedId, componentId) || this.componentsById[parsedId];
-      return toLogicalRootCommentElement(component);
-    } else {
+    const component = Number.isNaN(parsedId)
+      ? this.rootComponentManager?.tryResolveRootComponent(id, componentId)
+      : this.componentsById[parsedId];
+
+    if (!component) {
       return undefined;
     }
+
+    return toLogicalRootCommentElement(component);
   }
 
   public getParameterValues(id: number): string | undefined {

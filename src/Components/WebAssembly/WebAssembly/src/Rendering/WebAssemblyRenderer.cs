@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
@@ -55,11 +54,11 @@ internal sealed partial class WebAssemblyRenderer : WebRenderer
             RendererId);
     }
 
-    [DynamicDependency(JsonSerialized, typeof(RootComponentOperation<WebAssemblyComponentMarker>))]
+    [DynamicDependency(JsonSerialized, typeof(RootComponentOperation<ComponentMarker>))]
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "The correct members will be preserved by the above DynamicDependency")]
     protected override void UpdateRootComponents(string operationsJson)
     {
-        var operations = JsonSerializer.Deserialize<IEnumerable<RootComponentOperation<WebAssemblyComponentMarker>>>(
+        var operations = JsonSerializer.Deserialize<IEnumerable<RootComponentOperation<ComponentMarker>>>(
             operationsJson,
             WebAssemblyComponentSerializationSettings.JsonSerializationOptions)!;
 
@@ -82,7 +81,7 @@ internal sealed partial class WebAssemblyRenderer : WebRenderer
         return;
 
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Root components are expected to be defined in assemblies that do not get trimmed.")]
-        void AddRootComponent(RootComponentOperation<WebAssemblyComponentMarker> operation)
+        void AddRootComponent(RootComponentOperation<ComponentMarker> operation)
         {
             if (operation.SelectorId is not { } selectorId)
             {
@@ -94,10 +93,10 @@ internal sealed partial class WebAssemblyRenderer : WebRenderer
                 ?? throw new InvalidOperationException($"Root component type '{marker.TypeName}' could not be found in the assembly '{marker.Assembly}'.");
 
             var parameters = DeserializeComponentParameters(marker);
-            _ = AddComponentAsync(componentType, parameters, selectorId.ToString(CultureInfo.InvariantCulture));
+            _ = AddComponentAsync(componentType, parameters, selectorId);
         }
 
-        void UpdateRootComponent(RootComponentOperation<WebAssemblyComponentMarker> operation)
+        void UpdateRootComponent(RootComponentOperation<ComponentMarker> operation)
         {
             if (operation.ComponentId is not { } componentId)
             {
@@ -109,7 +108,7 @@ internal sealed partial class WebAssemblyRenderer : WebRenderer
             _ = RenderRootComponentAsync(componentId, parameters);
         }
 
-        void RemoveRootComponent(RootComponentOperation<WebAssemblyComponentMarker> operation)
+        void RemoveRootComponent(RootComponentOperation<ComponentMarker> operation)
         {
             if (operation.ComponentId is not { } componentId)
             {
@@ -119,7 +118,7 @@ internal sealed partial class WebAssemblyRenderer : WebRenderer
             this.RemoveRootComponent(componentId);
         }
 
-        static ParameterView DeserializeComponentParameters(WebAssemblyComponentMarker marker)
+        static ParameterView DeserializeComponentParameters(ComponentMarker marker)
         {
             var definitions = WebAssemblyComponentParameterDeserializer.GetParameterDefinitions(marker.ParameterDefinitions!);
             var values = WebAssemblyComponentParameterDeserializer.GetParameterValues(marker.ParameterValues!);

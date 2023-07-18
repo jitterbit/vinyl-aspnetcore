@@ -1,9 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.RenderTree;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -94,14 +94,20 @@ internal class SSRRenderModeBoundary : IComponent
         builder.CloseComponent();
     }
 
-    public (ServerComponentMarker?, WebAssemblyComponentMarker?) ToMarkers(HttpContext httpContext, int sequence, object? key)
+    public ComponentMarker ToMarker(HttpContext httpContext, int sequence, object? key)
     {
         var parameters = _latestParameters is null
             ? ParameterView.Empty
             : ParameterView.FromDictionary((IDictionary<string, object?>)_latestParameters);
         var markerKey = GenerateMarkerKey(sequence, key);
+        var marker = _renderMode switch
+        {
+            ServerRenderMode server => ComponentMarker.Create(ComponentMarker.ServerMarkerType, server.Prerender, markerKey),
+            WebAssemblyRenderMode webAssembly => ComponentMarker.Create(ComponentMarker.WebAssemblyMarkerType, webAssembly.Prerender, markerKey),
+            AutoRenderMode auto => ComponentMarker.Create(ComponentMarker.AutoMarkerType, auto.Prerender, markerKey),
+            _ => throw new UnreachableException($"Unknown render mode {_renderMode.GetType().FullName}"),
+        };
 
-        ServerComponentMarker? serverMarker = null;
         if (_renderMode is ServerRenderMode or AutoRenderMode)
         {
             // Lazy because we don't actually want to require a whole chain of services including Data Protection
@@ -109,16 +115,15 @@ internal class SSRRenderModeBoundary : IComponent
             var serverComponentSerializer = httpContext.RequestServices.GetRequiredService<ServerComponentSerializer>();
 
             var invocationId = EndpointHtmlRenderer.GetOrCreateInvocationId(httpContext);
-            serverMarker = serverComponentSerializer.SerializeInvocation(invocationId, _componentType, parameters, markerKey, _prerender);
+            serverComponentSerializer.SerializeInvocation(ref marker, invocationId, _componentType, parameters);
         }
 
-        WebAssemblyComponentMarker? webAssemblyMarker = null;
         if (_renderMode is WebAssemblyRenderMode or AutoRenderMode)
         {
-            webAssemblyMarker = WebAssemblyComponentSerializer.SerializeInvocation(_componentType, parameters, markerKey, _prerender);
+            WebAssemblyComponentSerializer.SerializeInvocation(ref marker, _componentType, parameters);
         }
 
-        return (serverMarker, webAssemblyMarker);
+        return marker;
     }
 
     private string GenerateMarkerKey(int sequence, object? key)

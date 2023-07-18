@@ -3,7 +3,6 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.RenderTree;
@@ -74,7 +73,7 @@ internal partial class RemoteRenderer : WebRenderer
 
     protected override void UpdateRootComponents(string operationsJson)
     {
-        var operations = JsonSerializer.Deserialize<IEnumerable<RootComponentOperation<ServerComponentMarker>>>(
+        var operations = JsonSerializer.Deserialize<IEnumerable<RootComponentOperation<ComponentMarker>>>(
             operationsJson,
             ServerComponentSerializationSettings.JsonSerializationOptions);
 
@@ -96,7 +95,7 @@ internal partial class RemoteRenderer : WebRenderer
 
         return;
 
-        void AddRootComponent(RootComponentOperation<ServerComponentMarker> operation)
+        void AddRootComponent(RootComponentOperation<ComponentMarker> operation)
         {
             if (operation.SelectorId is not { } selectorId)
             {
@@ -109,10 +108,10 @@ internal partial class RemoteRenderer : WebRenderer
                 throw new InvalidOperationException("Failed to deserialize a component descriptor when adding a new root component.");
             }
 
-            _ = AddComponentAsync(descriptor.ComponentType, descriptor.Parameters, selectorId.ToString(CultureInfo.InvariantCulture));
+            _ = AddComponentAsync(descriptor.ComponentType, descriptor.Parameters, selectorId);
         }
 
-        void UpdateRootComponent(RootComponentOperation<ServerComponentMarker> operation)
+        void UpdateRootComponent(RootComponentOperation<ComponentMarker> operation)
         {
             if (operation.ComponentId is not { } componentId)
             {
@@ -136,7 +135,7 @@ internal partial class RemoteRenderer : WebRenderer
             _ = RenderRootComponentAsync(componentId, descriptor.Parameters);
         }
 
-        void RemoveRootComponent(RootComponentOperation<ServerComponentMarker> operation)
+        void RemoveRootComponent(RootComponentOperation<ComponentMarker> operation)
         {
             if (operation.ComponentId is not { } componentId)
             {
