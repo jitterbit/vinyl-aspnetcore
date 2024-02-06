@@ -48,7 +48,7 @@ If you haven't set up a github authentication key for writing packages to the ji
 https://github.com/settings/profile
 - Click Developer Settings
 - Navigate to Personal Access Tokens > Tokens (classic)
-- Generate a new token and include `repo, write:packages` permissions.
+- Generate a new token and include `repo, write:packages` permissions. Make sure to perform SSO for your new token!
 - Copy the generated key.
 - Open (or create) the file `~/.nuget/NuGet/NuGet.Config`
 - Add the following sections (merging with existing values if necessary)
@@ -61,14 +61,14 @@ https://github.com/settings/profile
         <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
 
         <!-- Add the github jitterbit repository -->
-        <add key="github" value="https://nuget.pkg.github.com/jitterbit/index.json" />
+        <add key="jitterbit" value="https://nuget.pkg.github.com/jitterbit/index.json" />
     </packageSources>
     <packageSourceCredentials>
         <!-- Add your packages write token -->
-        <github>
+        <jitterbit>
             <add key="Username" value="YOUR_USERNAME_HERE" />
             <add key="ClearTextPassword" value="YOUR_KEY_HERE />
-        </github>
+        </jitterbit>
     </packageSourceCredentials>
 </configuration>
 ```
@@ -78,7 +78,7 @@ https://github.com/settings/profile
 After downloading all the nuget packages to a folder, run a command such as this to upload them to nuget packages:
 
 ```
-nuget push *.26.nupkg -source "github" -skipduplicate
+for i in `ls *.26.nupkg`; do dotnet nuget push $i --source "jitterbit" --skip-duplicate; done
 ```
 
 Note that you only need to push the nupkg and not the symbols (they will be automatically pushed when pushing the package).
